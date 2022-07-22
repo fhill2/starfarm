@@ -5,8 +5,11 @@ Dependencies
 pip install emoji ghapi pygithub
 ```
 Github Stars <-> REPO_DIR
+
 Github Stars (read only)-> tags_unsorted.yaml
+
 tags.yaml -> REPO_SYM_DIR
+
 tags_unsorted.yaml (read only) -> REPO_SYM_DIR
 
 
@@ -37,7 +40,7 @@ python_hypothesis*:
 ```
 - append `*` to tag name and the script won't star the repo
 any starred repos that are nvim plugins (PLUGIN_DIR) won't be cloned (I don't need 2 instances of the same repo on my machine)
-script won't ever unstar repos
+script will never unstar repos
 
 
 ### Workflow

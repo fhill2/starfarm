@@ -1,0 +1,37 @@
+#!/usr/bin/python
+# these aren't used in the main program
+exit()
+
+# to help clean the codelibrary
+
+
+# these shouldnt be in the database
+import shutil
+from globals import REPO_DIR
+from get import *
+fs = get_fs()
+packer = get_packer()
+stars = get_fake_stars()
+fs_packer_plugs_only = filter_by_fullname(fs, filter_by_fullname(stars, packer))
+for repo in fs_packer_plugs_only:
+    dest = REPO_DIR + "/" + repo["full_name"]
+    print("Removing Repo from fs: " + dest)
+    shutil.rmtree(dest)
+
+
+# could also add  checking all packer plugins and trying to star them
+# to find redirection urls
+
+
+
+# change all repos to lowercase
+import os
+from globals import REPO_DIR
+os.chdir(REPO_DIR)
+for owner in os.listdir(REPO_DIR):
+    sub = os.path.join(REPO_DIR, owner)
+    if os.path.isdir(sub):
+        os.rename(owner, owner.lower())
+        # os.chdir(sub)
+        # for repo in os.listdir(sub):
+            # os.rename(repo, repo.lower())

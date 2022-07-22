@@ -44,7 +44,7 @@ stars_nopacker_nofs = filter_by_fullname(stars_nopacker, fs)
 repos_to_clean = filter_by_fullname(fs, stars_nopacker)
 print(steps(1) + "for fs not in stars - remove...")
 for repo in repos_to_clean:
-    dest = REPO_DIR + "/" + repo["full_name"]
+    dest = os.path.join(REPO_DIR, repo["full_name"])
     print("- Removing Repo from fs: " + dest)
     shutil.rmtree(dest)
 

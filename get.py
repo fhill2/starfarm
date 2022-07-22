@@ -55,7 +55,7 @@ def filter_by_fullname_tag(a, b):
 
 def get_packer():
     def opt_start(opt_start):
-        folder = PLUGIN_DIR + "/" + opt_start
+        folder = is.path.join(PLUGIN_DIR, opt_start)
         dirs = [name for name in os.listdir(folder) if os.path.isdir(os.path.join(folder, name))]
         cmd_str = ""
         for dir in dirs:
@@ -176,7 +176,7 @@ def get_fs():
 
 def clone(repo):
     url = "https://github.com/" + repo["full_name"]
-    dest = REPO_DIR + "/" + repo["full_name"]
+    dest = os.path.join(REPO_DIR, repo["full_name"])
     cmd = "git clone " + url + " " + dest + " --depth 1"
     print("+ " + cmd)
     git.Repo.clone_from(url, dest)
@@ -186,7 +186,7 @@ def clone(repo):
 def clone_all(repos):
     remaining = len(repos)
     for repo in repos:
-        mkdir(REPO_DIR + "/" + repo["owner"])
+        mkdir(os.path.join(REPO_DIR, repo["owner"]))
         with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
             results = [executor.submit(clone,repo) for repo in repos]
 

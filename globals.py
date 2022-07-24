@@ -1,11 +1,15 @@
 from shutil import which
 from pathlib import Path
 import subprocess
+import os
 home = str(Path.home())
-DEV = home + "/dev"
-PLUGIN_DIR = home + "/.local/share/nvim/site/pack/packer"
-REPO_DIR = home + "/repos/repodl"
-REPO_SYM_DIR = home + "/repodl"
+PLUGIN_DIR = os.path.join(home, ".local/share/nvim/site/pack/packer")
+REPO_DIR = os.path.join(home, "repos")
+STARFARM_DIR = os.path.join(REPO_DIR, "starfarm")
+
+# symlink only dirs
+REPO_TAG_DIR = os.path.join(home, "repos-tags")
+REPO_FLAT_DIR = os.path.join(home, "repos-flat")
 TOTAL_STEPS = 9
 
 def get_token():

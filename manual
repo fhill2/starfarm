@@ -7,14 +7,14 @@ exit()
 
 # these shouldnt be in the database
 import shutil
-from globals import REPO_DIR
+from globals import STARFARM_DIR
 from get import *
 fs = get_fs()
 packer = get_packer()
 stars = get_fake_stars()
 fs_packer_plugs_only = filter_by_fullname(fs, filter_by_fullname(stars, packer))
 for repo in fs_packer_plugs_only:
-    dest = REPO_DIR + "/" + repo["full_name"]
+    dest = STARFARM_DIR + "/" + repo["full_name"]
     print("Removing Repo from fs: " + dest)
     shutil.rmtree(dest)
 
@@ -26,10 +26,10 @@ for repo in fs_packer_plugs_only:
 
 # change all repos to lowercase
 import os
-from globals import REPO_DIR
-os.chdir(REPO_DIR)
-for owner in os.listdir(REPO_DIR):
-    sub = os.path.join(REPO_DIR, owner)
+from globals import STARFARM_DIR
+os.chdir(STARFARM_DIR)
+for owner in os.listdir(STARFARM_DIR):
+    sub = os.path.join(STARFARM_DIR, owner)
     if os.path.isdir(sub):
         os.rename(owner, owner.lower())
         # os.chdir(sub)

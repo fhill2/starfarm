@@ -1,0 +1,4 @@
+#!/usr/bin/sh
+ln -s $PWD/create_flat_repos ~/.local/bin/starfarm_create_flat_repos
+ln -s $PWD/find_git_repos ~/.local/bin/starfarm_find_git_repos
+ln -s $PWD/sync ~/.local/bin/starfarm_sync

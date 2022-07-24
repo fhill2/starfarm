@@ -4,19 +4,19 @@ Dependencies
 ```bash
 pip install emoji ghapi pygithub
 ```
-Github Stars <-> REPO_DIR
+Github Stars <-> STARFARM_DIR
 
 Github Stars (read only)-> tags_unsorted.yaml
 
-tags.yaml -> REPO_SYM_DIR
+tags.yaml -> REPO_TAG_DIR
 
-tags_unsorted.yaml (read only) -> REPO_SYM_DIR
+tags_unsorted.yaml (read only) -> REPO_TAG_DIR
 
 
 To use:
 - install requirements
 - add your github PAT token and paste into globals.py - or use pass
-- edit/confirm locations for REPO_DIR, REPO_SYM_DIR, PLUGIN_DIR in globals.py
+- edit/confirm locations for STARFARM_DIR, REPO_TAG_DIR, PLUGIN_DIR in globals.py
 - create tags.yaml in project root
 
 
@@ -45,22 +45,22 @@ script will never unstar repos
 
 ### Workflow
 when starring a repo online
-- newly starred repo is cloned into REPO_DIR
+- newly starred repo is cloned into STARFARM_DIR
 - repo is added to tags_unsorted.yaml
-- symlink is created in REPO_SYM_DIR (unsorted tag automatically applied)
+- symlink is created in REPO_TAG_DIR (unsorted tag automatically applied)
 
 when unstarring a repo online:
-- unstarred repo is removed from REPO_DIR
+- unstarred repo is removed from STARFARM_DIR
 - repo is removed from tags_unsorted.yaml if it exists
 - (note): if the repo is in tags.yaml, it also has to be deleted to unstar the repo, otherwise it will be cloned on next run.
 
 add repos to tags.yaml:
-- newly added repo is cloned into REPO_DIR
-- symlink is created in REPO_SYM_DIR in the tag folder
+- newly added repo is cloned into STARFARM_DIR
+- symlink is created in REPO_TAG_DIR in the tag folder
 
 move repos from tags_unsorted.yaml to tags.yaml to categorize unsorted repos:
-- symlink is removed from REPO_SYM_DIR unsorted tag folder
-- symlink is created in REPO_SYM_DIR tag folder
+- symlink is removed from REPO_TAG_DIR unsorted tag folder
+- symlink is created in REPO_TAG_DIR tag folder
 - (note): if you add new repos to tags_unsorted.yaml they will be deleted (file is read-only)
 
 

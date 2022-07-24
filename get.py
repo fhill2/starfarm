@@ -1,8 +1,10 @@
 import os, yaml, emoji, git, subprocess
-from globals import TOTAL_STEPS, PLUGIN_DIR, REPO_DIR, REPO_SYM_DIR, TOKEN
+from globals import TOTAL_STEPS, PLUGIN_DIR, STARFARM_DIR, REPO_TAG_DIR, TOKEN
 
 from ghapi.all import GhApi, pages, paged
 api = GhApi(token=TOKEN)
+import concurrent
+import errno
 
 def remove_empty_folders(root):
     dirs = [name for name in os.listdir(root) if os.path.isdir(os.path.join(root, name))]
@@ -16,6 +18,13 @@ def mkdir(path):
         os.mkdir(path, mode = 0o777)
     except:
         pass
+
+def symlink(source, dest):
+    try:
+        os.symlink(source, dest)
+    except:
+        pass
+
 
 def get_stars(stars):
     # https://github.com/fastai/ghapi/issues/36
@@ -55,7 +64,7 @@ def filter_by_fullname_tag(a, b):
 
 def get_packer():
     def opt_start(opt_start):
-        folder = is.path.join(PLUGIN_DIR, opt_start)
+        folder = os.path.join(PLUGIN_DIR, opt_start)
         dirs = [name for name in os.listdir(folder) if os.path.isdir(os.path.join(folder, name))]
         cmd_str = ""
         for dir in dirs:
@@ -142,8 +151,8 @@ def get_config():
 
 def get_syms():
     repos = []
-    for tag in os.listdir(REPO_SYM_DIR):
-        sub = os.path.join(REPO_SYM_DIR, tag)
+    for tag in os.listdir(REPO_TAG_DIR):
+        sub = os.path.join(REPO_TAG_DIR, tag)
         if os.path.isdir(sub):
             for repo in os.listdir(sub):
                 if repo is not None:
@@ -160,8 +169,8 @@ def get_syms():
 
 def get_fs():
     repos = []
-    for owner in os.listdir(REPO_DIR):
-        sub = os.path.join(REPO_DIR, owner)
+    for owner in os.listdir(STARFARM_DIR):
+        sub = os.path.join(STARFARM_DIR, owner)
         if os.path.isdir(sub):
             for repo in os.listdir(sub):
                 repos.append({
@@ -176,7 +185,7 @@ def get_fs():
 
 def clone(repo):
     url = "https://github.com/" + repo["full_name"]
-    dest = os.path.join(REPO_DIR, repo["full_name"])
+    dest = os.path.join(STARFARM_DIR, repo["full_name"])
     cmd = "git clone " + url + " " + dest + " --depth 1"
     print("+ " + cmd)
     git.Repo.clone_from(url, dest)
@@ -186,7 +195,7 @@ def clone(repo):
 def clone_all(repos):
     remaining = len(repos)
     for repo in repos:
-        mkdir(os.path.join(REPO_DIR, repo["owner"]))
+        mkdir(os.path.join(STARFARM_DIR, repo["owner"]))
         with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
             results = [executor.submit(clone,repo) for repo in repos]
 

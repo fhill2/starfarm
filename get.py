@@ -1,10 +1,11 @@
 import os, yaml, emoji, git, subprocess
-from globals import TOTAL_STEPS, PLUGIN_DIR, STARFARM_DIR, REPO_TAG_DIR, TOKEN
+from globals import TOTAL_STEPS, SCRIPT_DIR, REPO_DIR, PLUGIN_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR, TOKEN
 
 from ghapi.all import GhApi, pages, paged
 api = GhApi(token=TOKEN)
 import concurrent
-import errno
+
+
 
 def remove_empty_folders(root):
     dirs = [name for name in os.listdir(root) if os.path.isdir(os.path.join(root, name))]
@@ -19,11 +20,67 @@ def mkdir(path):
     except:
         pass
 
-def symlink(source, dest):
-    try:
-        os.symlink(source, dest)
-    except:
-        pass
+# def symlink(source, dest):
+#     try:
+#         os.symlink(source, dest)
+#     except:
+#         pass
+
+
+
+
+def find_repo_category(relpath):
+    # accepts relpath from REPO_DIR
+    # TODO; could find this dynamically - walk folder structure, ist non git folders
+    categories = [ "git", "packer-fork", "packer/start", "packer/opt", "starfarm" ]
+    for cat in categories:
+        if relpath.startswith(cat):
+            return cat.replace("/", "_")
+
+
+def get_all_repos():
+    # retrieves all repos under REPO_DIR
+    all_repos = subprocess.run(["starfarm_find_git_repos " + REPO_DIR], capture_output=True, shell=True).stdout.decode('utf-8').strip().split("\n")
+    repos = []
+
+    for abs in all_repos:
+        repo = repo_from_path(abs)
+        repo["cat"] = find_repo_category(os.path.relpath(abs, REPO_DIR))
+        repo["abs"] = abs
+        repos.append(repo)
+    return repos
+
+
+
+    
+
+def repo_from_path(path):
+    # local abs path only
+    full_name = git.Repo(path).remotes.origin.url.replace("https://github.com/", "").replace("git@github.com:", "").replace(".git", "").lower()
+    owner_name = full_name.split("/")
+    return {
+        "owner": owner_name[0],
+        "name": owner_name[1],
+        "full_name": full_name,
+    }
+
+
+def get_flat_repos():
+    repos = []
+    for filename in os.listdir(REPO_FLAT_DIR):
+        filenameList = filename.split("|")
+        repos.append({
+            "cat": filenameList[0],
+            "owner": filenameList[1],
+            "name": filenameList[2],
+            "full_name": "/".join([filenameList[-2], filenameList[-1]]),
+            "filename": filename
+            })
+        # abs = os.path.join(REPO_DIR, repo.replace("|", "/"))
+        # repos.append(repo_from_path(abs))
+    return repos
+
+
 
 
 def get_stars(stars):
@@ -60,36 +117,44 @@ def filter_by_fullname_tag(a, b):
     return c
 
 
-
-
 def get_packer():
-    def opt_start(opt_start):
-        folder = os.path.join(PLUGIN_DIR, opt_start)
-        dirs = [name for name in os.listdir(folder) if os.path.isdir(os.path.join(folder, name))]
-        cmd_str = ""
-        for dir in dirs:
-            cmd_str += "cd " + dir + " && git config --get remote.origin.url && cd .. && "
-        cmd_str += "exit"
-        output = subprocess.run(["zsh", "-c", cmd_str], capture_output=True, cwd=folder).stdout.decode('utf-8')
-        return output.replace("https://github.com/", "").replace("git@github.com:", "").replace(".git", "")
+        start_repos = [PLUGIN_DIR + "/start/" + plug for plug in os.listdir(PLUGIN_DIR + "/start")]
+        opt_repos = [PLUGIN_DIR + "/opt/" + plug for plug in os.listdir(PLUGIN_DIR + "/opt")]
+        packer_repos = start_repos + opt_repos
+        repos = []
+        for abs in packer_repos:
+            repos.append(repo_from_path(abs))
+        return repos
 
-    # returns as repos = ["owner/repo", "owner/repo"]
-    repos = (opt_start("start") + opt_start("opt")).split("\n")
 
-    # remove empty strings in list
-    while ("" in repos):
-        repos.remove("")
-
-    plugins = []
-    for repo_str in repos:
-        repo_str = repo_str.lower()
-        owner_name = repo_str.split("/")
-        plugins.append({
-            'owner': owner_name[0],
-            'name': owner_name[1],
-            'full_name': repo_str
-        })
-    return plugins
+# def get_packer():
+#     def opt_start(opt_start):
+#         folder = os.path.join(PLUGIN_DIR, opt_start)
+#         dirs = [name for name in os.listdir(folder) if os.path.isdir(os.path.join(folder, name))]
+#         cmd_str = ""
+#         for dir in dirs:
+#             cmd_str += "cd " + dir + " && git config --get remote.origin.url && cd .. && "
+#         cmd_str += "exit"
+#         output = subprocess.run(["zsh", "-c", cmd_str], capture_output=True, cwd=folder).stdout.decode('utf-8')
+#         return output.replace("https://github.com/", "").replace("git@github.com:", "").replace(".git", "")
+#
+#     # returns as repos = ["owner/repo", "owner/repo"]
+#     repos = (opt_start("start") + opt_start("opt")).split("\n")
+#
+#     # remove empty strings in list
+#     while ("" in repos):
+#         repos.remove("")
+#
+#     plugins = []
+#     for repo_str in repos:
+#         repo_str = repo_str.lower()
+#         owner_name = repo_str.split("/")
+#         plugins.append({
+#             'owner': owner_name[0],
+#             'name': owner_name[1],
+#             'full_name': repo_str
+#         })
+#     return plugins
 
 
 def get_org(org):
@@ -117,7 +182,7 @@ def per_repo(repo, tag=False):
 
 
 def get_unsorted():
-    with open('tags_unsorted.yaml') as f:
+    with open(os.path.join(SCRIPT_DIR, 'tags_unsorted.yaml')) as f:
         tags_unsorted_file = yaml.safe_load(f)
     if tags_unsorted_file == None:
         tags_unsorted_file = []
@@ -130,7 +195,7 @@ def get_unsorted():
 
 
 def get_config():
-    with open('tags.yaml') as f:
+    with open(os.path.join(SCRIPT_DIR, 'tags.yaml')) as f:
         tags_file = yaml.safe_load(f)
 
     if tags_file == None:
@@ -213,3 +278,14 @@ def star(repo):
 def steps(step):
     return str(step) + "/" + str(TOTAL_STEPS) + " "
 
+
+
+
+
+    # abs = os.path.join(REPO_DIR, "/".join(relpathList))
+ 
+        # else:
+# def get_all_flat_repos():
+#     for repo in get_all_repos():
+#         gitRepo = git.Repo(repo)
+#         print(gitRepo)

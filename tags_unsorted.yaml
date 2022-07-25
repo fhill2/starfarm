@@ -58,7 +58,7 @@
 - chriskempson/tomorrow-theme
 - norcalli/nvim-base16.lua
 - jasperro/flatcolor
-- misterio77/base16-gtk-flatcolor
+- base16-project/base16-gtk-flatcolor
 - norcalli/nvim-colorizer.lua
 - lifepillar/vim-colortemplate
 - lazytanuki/nvim-mapper

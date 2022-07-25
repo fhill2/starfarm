@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # this script will never unstar repos
 from get import *
-import time
-import shutil
-from globals import home, PLUGIN_DIR, STARFARM_DIR
-import multiprocessing
-start = time.perf_counter()
+import time, multiprocessing, shutil
+from globals import home, PLUGIN_DIR, REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR
+# start = time.perf_counter()
 
+print(SCRIPT_DIR)
+
+# print(api.rate_limit.get())
 
 print("Retrieving stars from github...")
 # get_stars
@@ -23,9 +24,10 @@ unsorted = get_unsorted()
 
 # print(f"Completed Getting Data in {time.perf_counter() - start} seconds")
 
+for dir in [REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR]:
+    mkdir(dir)
 
 
-mkdir(REPO_TAG_DIR)
 
 # wait to get stars
 p.join()
@@ -83,14 +85,14 @@ syms_to_remove = filter_by_fullname_tag(syms, config + unsorted)
 
 
 #  SYMLINKS 
-print(steps(5) + "for syms not in config - remove syms")
+print(steps(5) + "for tag syms not in config - remove syms")
 for repo in syms_to_remove:
     owner_name = repo["owner"] + "|" + repo["name"]
     target = os.path.join(REPO_TAG_DIR, repo["tag"], owner_name)
     os.remove(target)
     print("- Removing symlink: " + target)
 
-print(steps(6) + "for config not in syms - create syms...")
+print(steps(6) + "for config not in tag syms - create syms...")
 for repo in syms_to_create:
     mkdir(os.path.join(REPO_TAG_DIR, repo["tag"]))
     source = os.path.join(STARFARM_DIR, repo["full_name"])
@@ -116,3 +118,5 @@ for plugin in packer_nostars:
 print(steps(9) + "removing empty folders...")
 remove_empty_folders(STARFARM_DIR)
 remove_empty_folders(REPO_TAG_DIR)
+
+import create_flat_repos

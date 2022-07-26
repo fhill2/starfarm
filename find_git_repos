@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/sh
 # https://stackoverflow.com/questions/11981716/how-to-quickly-find-all-git-repos-under-a-directory
 update() {
     for d in "$@"; do
@@ -8,7 +8,7 @@ update() {
         if [ -d ".git" ]; then
             echo "$PWD"
         else
-            update *
+          update *
         fi
         cd ..
     done

@@ -99,6 +99,14 @@ def get_stars(stars):
 
 
 
+def lookup_by_fullname(repos, full_name):
+    for repo in repos:
+        if repo["full_name"] == full_name:
+            return repo
+    return False
+
+
+
 def filter_by_fullname(a, b):
     # filters b from a, using the full_name key
     blist = [bb["full_name"] for bb in b]
@@ -120,10 +128,19 @@ def filter_by_fullname_tag(a, b):
 def get_packer():
         start_repos = [PLUGIN_DIR + "/start/" + plug for plug in os.listdir(PLUGIN_DIR + "/start")]
         opt_repos = [PLUGIN_DIR + "/opt/" + plug for plug in os.listdir(PLUGIN_DIR + "/opt")]
-        packer_repos = start_repos + opt_repos
+
+
         repos = []
-        for abs in packer_repos:
-            repos.append(repo_from_path(abs))
+        for abs in start_repos:
+            repo = repo_from_path(abs)
+            repo["sub"] = "start"
+            repos.append(repo)
+        for abs in opt_repos:
+            repo = repo_from_path(abs)
+            repo["sub"] = "opt"
+            repos.append(repo)
+
+
         return repos
 
 

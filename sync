@@ -2,10 +2,9 @@
 # this script will never unstar repos
 from get import *
 import time, multiprocessing, shutil
-from globals import home, PLUGIN_DIR, REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR
+from globals import home, SCRIPT_DIR, PLUGIN_DIR, REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR
 # start = time.perf_counter()
 
-print(SCRIPT_DIR)
 
 # print(api.rate_limit.get())
 
@@ -73,7 +72,7 @@ for repo in stars_noconfig_nounsorted:
     print("+ tags_unsorted: " + repo["full_name"])
 
 # write all the results again instead of appending
-with open('tags_unsorted.yaml', 'w') as file:
+with open(os.path.join(SCRIPT_DIR, 'tags_unsorted.yaml'), 'w') as file:
     yaml.dump([repo["full_name"] for repo in stars_noconfig], file)
 
 
@@ -95,7 +94,11 @@ for repo in syms_to_remove:
 print(steps(6) + "for config not in tag syms - create syms...")
 for repo in syms_to_create:
     mkdir(os.path.join(REPO_TAG_DIR, repo["tag"]))
-    source = os.path.join(STARFARM_DIR, repo["full_name"])
+    plugin_repo = lookup_by_fullname(packer, repo["full_name"])
+    if plugin_repo:
+        source = os.path.join(PLUGIN_DIR, plugin_repo["sub"], plugin_repo["name"])
+    else:
+        source = os.path.join(STARFARM_DIR, repo["full_name"])
     dest = os.path.join(REPO_TAG_DIR, repo["tag"], repo["full_name"].replace("/", "|"))
     os.symlink(source, dest)
     print("+ " + source + " --> " + dest)

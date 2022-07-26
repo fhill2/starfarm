@@ -27,8 +27,6 @@ for dir in [REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR]:
     mkdir(dir)
 
 
-# make sure all packer plugins are lowercase (fixes packer syms)
-packer_dirs_to_lower()
 
 
 # wait to get stars
@@ -79,7 +77,8 @@ with open(os.path.join(SCRIPT_DIR, 'tags_unsorted.yaml'), 'w') as file:
     yaml.dump([repo["full_name"] for repo in stars_noconfig], file)
 
 
-# at this point, the fs and unsorted have been modified, so get them again
+# at this point, the fs and unsorted have been modified, and all repos have been downloaded
+all_repos = get_all_repos()
 unsorted = get_unsorted()
 fs = get_fs()
 syms_to_create = filter_by_fullname_tag(config + unsorted, syms)
@@ -97,11 +96,7 @@ for repo in syms_to_remove:
 print(steps(6) + "for config not in tag syms - create syms...")
 for repo in syms_to_create:
     mkdir(os.path.join(REPO_TAG_DIR, repo["tag"]))
-    plugin_repo = lookup_by_fullname(packer, repo["full_name"])
-    if plugin_repo:
-        source = os.path.join(PLUGIN_DIR, plugin_repo["sub"], plugin_repo["name"])
-    else:
-        source = os.path.join(STARFARM_DIR, repo["full_name"])
+    source = find_repo_source(all_repos, repo)
     dest = os.path.join(REPO_TAG_DIR, repo["tag"], repo["full_name"].replace("/", "|"))
     os.symlink(source, dest)
     print("+ " + source + " --> " + dest)
@@ -125,4 +120,23 @@ print(steps(9) + "removing empty folders...")
 remove_empty_folders(STARFARM_DIR)
 remove_empty_folders(REPO_TAG_DIR)
 
-import create_flat_repos
+# symlink new repos into REPO_FLAT_DIR
+flat_repos = get_flat_repos()
+print("for all repos not in flat syms: -- create syms.. ")
+all_noflat = filter_by_fullname(all_repos, flat_repos)
+for repo in all_noflat:
+    print(repo)
+    filename = "|".join([repo["cat"], repo["owner"], repo["name"]])
+    source = repo["abs"]
+    dest = os.path.join(REPO_FLAT_DIR, filename)
+    os.symlink(source, dest)
+
+
+
+print("for flat syms not in all repos - remove syms...")
+flat_noall = filter_by_fullname(flat_repos, all_repos)
+## REMOVE SYMS.. MAKE SUR
+for repo in flat_noall:
+    abs = os.path.join(REPO_FLAT_DIR, repo["filename"])
+    print("Removing: " + abs)
+    os.remove(abs)

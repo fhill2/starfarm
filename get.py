@@ -26,6 +26,12 @@ def mkdir(path):
 #     except:
 #         pass
 
+def find_repo_source(all_repos, match_repo):
+    repo = lookup_by_fullname(all_repos, match_repo["full_name"])
+    if repo["cat"].startswith("packer"):
+        return os.path.join(REPO_DIR, repo["cat"], plugin_repo["name_nolower"])
+    else: 
+        return os.path.join(REPO_DIR, repo["cat"], plugin_repo["name"])
 
 
 
@@ -68,14 +74,15 @@ def repo_from_path(path):
 def get_flat_repos():
     repos = []
     for filename in os.listdir(REPO_FLAT_DIR):
-        filenameList = filename.split("|")
-        repos.append({
-            "cat": filenameList[0],
-            "owner": filenameList[1],
-            "name": filenameList[2],
-            "full_name": "/".join([filenameList[-2], filenameList[-1]]),
-            "filename": filename
-            })
+        if os.path.exists(os.readlink(os.path.join(REPO_FLAT_DIR, filename))):
+            filenameList = filename.split("|")
+            repos.append({
+                "cat": filenameList[0],
+                "owner": filenameList[1],
+                "name": filenameList[2],
+                "full_name": "/".join([filenameList[-2], filenameList[-1]]),
+                "filename": filename
+                })
         # abs = os.path.join(REPO_DIR, repo.replace("|", "/"))
         # repos.append(repo_from_path(abs))
     return repos
@@ -125,22 +132,30 @@ def filter_by_fullname_tag(a, b):
     return c
 
 
-def get_packer_abs():
-        start_repos = [PLUGIN_DIR + "/start/" + plug for plug in os.listdir(PLUGIN_DIR + "/start")]
-        opt_repos = [PLUGIN_DIR + "/opt/" + plug for plug in os.listdir(PLUGIN_DIR + "/opt")]
-        return start_repos, opt_repos
+
+def packer_repo_from_path(path):
+    # local abs path only
+    full_name = git.Repo(path).remotes.origin.url.replace("https://github.com/", "").replace("git@github.com:", "").replace(".git", "")
+    owner_name = full_name.split("/")
+    return {
+        "owner": owner_name[0].lower(),
+        "name": owner_name[1].lower(),
+        "full_name": full_name.lower(),
+        # packer installs plugins with upper and lowercase letters, and sees a lowercase named repo as a different plugin
+        "name_nolower": owner_name[1]
+    }
 
 def get_packer():
-
-        start_repos, opt_repos = get_packer_abs()
+        start_repos = [PLUGIN_DIR + "/start/" + plug for plug in os.listdir(PLUGIN_DIR + "/start")]
+        opt_repos = [PLUGIN_DIR + "/opt/" + plug for plug in os.listdir(PLUGIN_DIR + "/opt")]
 
         repos = []
         for abs in start_repos:
-            repo = repo_from_path(abs)
+            repo = packer_repo_from_path(abs)
             repo["sub"] = "start"
             repos.append(repo)
         for abs in opt_repos:
-            repo = repo_from_path(abs)
+            repo = packer_repo_from_path(abs)
             repo["sub"] = "opt"
             repos.append(repo)
 
@@ -149,18 +164,18 @@ def get_packer():
 
 
 
-def packer_dirs_to_lower():
-    start_repos, opt_repos = get_packer_abs()
-# change all repos to lowercase
-os.chdir(os.path.join(PLUGIN_DIR, "start"))
-for name in os.listdir("."):
-    if any(char.isupper() for char in name):
-        os.rename(name, name.lower())
-
-os.chdir(os.path.join(PLUGIN_DIR, "opt"))
-for name in os.listdir("."):
-    if any(char.isupper() for char in name):
-        os.rename(name, name.lower())
+# def packer_dirs_to_lower():
+#     start_repos, opt_repos = get_packer_abs()
+# # change all repos to lowercase
+# os.chdir(os.path.join(PLUGIN_DIR, "start"))
+# for name in os.listdir("."):
+#     if any(char.isupper() for char in name):
+#         os.rename(name, name.lower())
+#
+# os.chdir(os.path.join(PLUGIN_DIR, "opt"))
+# for name in os.listdir("."):
+#     if any(char.isupper() for char in name):
+#         os.rename(name, name.lower())
 
 # def get_packer():
 #     def opt_start(opt_start):
@@ -255,14 +270,15 @@ def get_syms():
         sub = os.path.join(REPO_TAG_DIR, tag)
         if os.path.isdir(sub):
             for repo in os.listdir(sub):
-                if repo is not None:
-                    owner_name = repo.split("|")
-                    repos.append({
-                        'owner': owner_name[0],
-                        'name' : owner_name[1],
-                        'full_name' : "/".join(owner_name),
-                        'tag' : tag
-                    })
+                if os.path.exists(os.readlink(os.path.join(sub, repo))):
+                    if repo is not None:
+                        owner_name = repo.split("|")
+                        repos.append({
+                            'owner': owner_name[0],
+                            'name' : owner_name[1],
+                            'full_name' : "/".join(owner_name),
+                            'tag' : tag
+                        })
     return repos
 
 

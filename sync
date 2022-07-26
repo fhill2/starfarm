@@ -27,6 +27,9 @@ for dir in [REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR]:
     mkdir(dir)
 
 
+# make sure all packer plugins are lowercase (fixes packer syms)
+packer_dirs_to_lower()
+
 
 # wait to get stars
 p.join()

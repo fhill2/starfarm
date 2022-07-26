@@ -125,10 +125,14 @@ def filter_by_fullname_tag(a, b):
     return c
 
 
-def get_packer():
+def get_packer_abs():
         start_repos = [PLUGIN_DIR + "/start/" + plug for plug in os.listdir(PLUGIN_DIR + "/start")]
         opt_repos = [PLUGIN_DIR + "/opt/" + plug for plug in os.listdir(PLUGIN_DIR + "/opt")]
+        return start_repos, opt_repos
 
+def get_packer():
+
+        start_repos, opt_repos = get_packer_abs()
 
         repos = []
         for abs in start_repos:
@@ -143,6 +147,20 @@ def get_packer():
 
         return repos
 
+
+
+def packer_dirs_to_lower():
+    start_repos, opt_repos = get_packer_abs()
+# change all repos to lowercase
+os.chdir(os.path.join(PLUGIN_DIR, "start"))
+for name in os.listdir("."):
+    if any(char.isupper() for char in name):
+        os.rename(name, name.lower())
+
+os.chdir(os.path.join(PLUGIN_DIR, "opt"))
+for name in os.listdir("."):
+    if any(char.isupper() for char in name):
+        os.rename(name, name.lower())
 
 # def get_packer():
 #     def opt_start(opt_start):

@@ -28,6 +28,7 @@ def mkdir(path):
 
 def find_repo_source(all_repos, match_repo):
     repo = lookup_by_fullname(all_repos, match_repo["full_name"])
+    print(repo["cat"])
     if repo["cat"].startswith("packer"):
         return os.path.join(REPO_DIR, repo["cat"], plugin_repo["name_nolower"])
     else: 

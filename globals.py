@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import os
 home = str(Path.home())
+# TODO: ALL GLOBALS MUST NOT END WITH A FORWARD/BACK SLASH
 PLUGIN_DIR = os.path.join(home, ".local/share/nvim/site/pack/packer")
 REPO_DIR = os.path.join(home, "repos")
 STARFARM_DIR = os.path.join(REPO_DIR, "starfarm")
@@ -21,3 +22,5 @@ def get_token():
         return "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 TOKEN = get_token()
+
+

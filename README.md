@@ -17,7 +17,7 @@ To use:
 - install requirements
 - add your github PAT token and paste into globals.py - or use pass
 - edit/confirm locations for STARFARM_DIR, REPO_TAG_DIR, PLUGIN_DIR in globals.py
-- create tags.yaml in project root
+- create tags.yaml in $HOME/.config/starfarm
 
 
 ### Example tags.yaml
@@ -41,6 +41,7 @@ python_hypothesis*:
 - append `*` to tag name and the script won't star the repo
 any starred repos that are nvim plugins (PLUGIN_DIR) won't be cloned (I don't need 2 instances of the same repo on my machine)
 script will never unstar repos
+only 1 symlink target per repo can exist within REPO_TAG_DIR
 
 
 ### Workflow
@@ -63,4 +64,10 @@ move repos from tags_unsorted.yaml to tags.yaml to categorize unsorted repos:
 - symlink is created in REPO_TAG_DIR tag folder
 - (note): if you add new repos to tags_unsorted.yaml they will be deleted (file is read-only)
 
-
+___
+starm supports:
+starfarm has to support:
+download individual files
+star/download whole organizations - nvim-telescope
+gitlab
+private repos

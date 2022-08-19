@@ -7,13 +7,12 @@ home = str(Path.home())
 PLUGIN_DIR = os.path.join(home, ".local/share/nvim/site/pack/packer")
 REPO_DIR = os.path.join(home, "repos")
 STARFARM_DIR = os.path.join(REPO_DIR, "starfarm")
-
+CONFIG_DIR = os.path.join(home, ".config", "starfarm")
 # symlink only dirs
 REPO_TAG_DIR = os.path.join(home, "repos-tags")
 REPO_FLAT_DIR = os.path.join(home, "repos-flat")
-TOTAL_STEPS = 9
 
-SCRIPT_DIR = Path( __file__ ).absolute().parent
+# SCRIPT_DIR = Path( __file__ ).absolute().parent
 
 def get_token():
     if which("pass") is not None:

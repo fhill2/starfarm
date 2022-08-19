@@ -1,37 +1,32 @@
 #!/usr/bin/python
-# these aren't used in the main program
-exit()
-
-# to help clean the codelibrary
+# manual helper functions that aren't used in the main program to help clean the repo library
+# exit()
 
 
-# these shouldnt be in the database
-import shutil
-from globals import STARFARM_DIR
-from get import *
-fs = get_fs()
-packer = get_packer()
-stars = get_fake_stars()
-fs_packer_plugs_only = filter_by_fullname(fs, filter_by_fullname(stars, packer))
-for repo in fs_packer_plugs_only:
-    dest = STARFARM_DIR + "/" + repo["full_name"]
-    print("Removing Repo from fs: " + dest)
-    shutil.rmtree(dest)
-
-
-# could also add  checking all packer plugins and trying to star them
-# to find redirection urls
-
-
+def clean_failed_asterix_stars(): 
+    # oops, when creating the asterisk tags.yaml feature/option, the repos were actually starred - this unstars them
+    from farm import Farm
+    farm = Farm()
+    tags_file = farm._load_yaml_file("tags.yaml") 
+    for tag in tags_file:
+        if "*" in tag:
+            for full_name in tags_file[tag]:
+                if full_name is not None:
+                    owner_name = full_name.split("/")
+                    farm.unstar({ 'owner' : owner_name[0], 'name': owner_name[1] })
+    
 
 # change all repos to lowercase
-import os
-from globals import STARFARM_DIR
-os.chdir(STARFARM_DIR)
-for owner in os.listdir(STARFARM_DIR):
-    sub = os.path.join(STARFARM_DIR, owner)
-    if os.path.isdir(sub):
-        os.rename(owner, owner.lower())
-        # os.chdir(sub)
-        # for repo in os.listdir(sub):
-            # os.rename(repo, repo.lower())
+def all_repos_to_lowercase():
+    import os
+    from globals import STARFARM_DIR
+    os.chdir(STARFARM_DIR)
+    for owner in os.listdir(STARFARM_DIR):
+        sub = os.path.join(STARFARM_DIR, owner)
+        if os.path.isdir(sub):
+            os.rename(owner, owner.lower())
+
+
+# all_repos_to_lowercase()
+
+clean_failed_asterix_stars()

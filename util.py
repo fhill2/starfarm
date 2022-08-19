@@ -10,12 +10,6 @@ def run_sh(cmd):
     return output.stdout.decode('utf-8').strip().split("\n")
 
 
-def mkdir(path):
-    try:
-        os.mkdir(path, mode = 0o777)
-    except:
-        pass
-
 def symlink(source, dest):
     try:
         os.symlink(source, dest)
@@ -48,12 +42,10 @@ def abs_to_sub(abs, owner, name):
         i=i+1
     return sub
 
-    # while sub.startswith("/"):
-    #     sub = sub[1:]
-    # while sub.endswith("/"):
-    #     sub = sub[0:-1]
-    # # self.sub = self.sub.replace("//", "/")
-    # return sub
-
-
-
+def remove_empty_folders(root):
+    dirs = [name for name in os.listdir(root) if os.path.isdir(os.path.join(root, name))]
+    for dir in dirs:
+        sub = os.path.join(root, dir)
+        if not os.listdir(sub):
+            os.rmdir(sub)
+            print("- removing empty folder: " + sub)

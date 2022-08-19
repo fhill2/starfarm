@@ -1,5 +1,5 @@
-from globals import home, SCRIPT_DIR, PLUGIN_DIR, REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR, TOKEN
-import git, util, os, yaml, multiprocessing, time, shutil, emoji
+from globals import home, REPO_DIR, STARFARM_DIR, CONFIG_DIR, REPO_TAG_DIR, REPO_FLAT_DIR, TOKEN
+import git, util, os, yaml, multiprocessing, time, shutil, emoji, errno
 from subprocess import run
 from futil import dump
 
@@ -11,39 +11,28 @@ from concurrent.futures import ThreadPoolExecutor as Pool
 
 
 
-class tagSym():
-    def __init__(self, repo):
+class TagSym():
+    def __init__(self, repo, sub):
         self.filename = "|".join([repo.owner.lower(), repo.name.lower()])
-        if repo.sub == "packer":
-            self.update(tag=repo.sub)
-        else:
-            self.update(tag="unsorted")
         self.repo = repo
-
-
-    def update(self, tag):
-        self.sub = tag
+        self.sub = sub
         self.target = os.path.join(REPO_TAG_DIR, self.sub, self.filename)
 
-class flatSym():
+
+class FlatSym():
     def __init__(self, repo):
-        self.filename = "|".join([repo.sub, repo.owner.lower(), repo.name.lower()])
-        if repo.sub == "packer":
-            self.sub = repo.sub
+        self.filename = "|".join([repo.sub.replace("/", "_"), repo.owner.lower(), repo.name.lower()])
         self.repo = repo
-        self.sub = repo.sub
-        # self.source = repo.abs
         self.target = os.path.join(REPO_FLAT_DIR, self.filename)
-        # self.exists = os.path.exists(self.target)
 
 
 class Repo():
     def __init__(self, abs):
+        # in this current version, self.source is replaced by self.abs as there is no need for both now
         if not abs.startswith(STARFARM_DIR):
             self.abs = os.path.join(STARFARM_DIR, abs)
         else:
             self.abs = abs
-        self.source = os.path.realpath(abs)
         gitRepo = git.Repo(self.abs) 
         self.git = gitRepo
         self.full_name = util.url_to_full_name(gitRepo.remotes.origin.url)
@@ -53,27 +42,41 @@ class Repo():
         self.sub = util.abs_to_sub(self.abs, self.owner, self.name)
         self.starred = False
         self.restrict_star = False
-        self.tagsym = tagSym(self)
-        self.flatsym = flatSym(self)
+        self.unsorted = False
+        
+        self.tagsyms = []
+        self.flatsym = FlatSym(self)
 
-    # def in_tags(self):
-    #     return True if self.tagsym.sub != "unsorted" else False
-    def update(self, tag):
-        if "*" in tag:
-            self.restrict_star = True
-        self.tagsym.update(tag=tag)
+    def create_tagsym(self, sub):
+        self.tagsyms.append(TagSym(self, sub))
 
     def symlink(self):
-        for sym in [self.tagsym, self.flatsym]:
-            try:
-                os.symlink(self.source, sym.target)
-            except:
-                pass
-            else:
-                print("+ " + self.source + " --> " + sym.target)
-        # return True if list(filter(lambda x: x.type == "tag", self.targets.values())) else False
+        targets = [sym.target for sym in self.tagsyms]
+
+        if self.unsorted:
+            targets.append(TagSym(self, "unsorted").target)
+
+        targets.append(self.flatsym.target)
+
+        def do_symlink(source, target):
+            if not os.path.lexists(target):
+                try:
+                    os.symlink(source, target)
+                except OSError as e:
+                    if e.errno == errno.ENOENT:
+                        os.makedirs(os.path.dirname(target), mode = 0o777, exist_ok=True)
+                        do_symlink(source, target)
+                    else:
+                        print("failed to create symlink: " + source + " --> " + target)
+                        exit()
+                else:
+                    print("+ " + source + " --> " + target)
 
 
+        for target in targets:
+            do_symlink(self.abs, target)
+
+   
 def _clone_subprocess(full_name):
         repo = git.Repo.clone_from("https://github.com/" + full_name, os.path.join(STARFARM_DIR, full_name))
         while not repo:
@@ -90,16 +93,16 @@ def _download_stars_subprocess(stars):
 class Farm:
     def __init__(self):
         self.repos = {}
-        # self.cloneList = [] # clones not yet started
-        # self.clonesPending = []
         self.manager = multiprocessing.Manager()
         self.pool = Pool()
         self.downloading = []
-        self.original_unsorted = []
 
-        # TODO: make sure packer is symlinked here before get()
-        for dir in [REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR]:
-            util.mkdir(dir)
+        if not os.path.lexists(os.path.join(REPO_DIR, "packer")):
+            print("packer plugin folder does not exist inside REPO_DIR")
+            exit()
+
+        for dir in [REPO_DIR, STARFARM_DIR, REPO_TAG_DIR, REPO_FLAT_DIR, CONFIG_DIR]:
+            os.makedirs(os.path.dirname(dir), mode = 0o777, exist_ok=True)
 
 
 
@@ -116,6 +119,8 @@ class Farm:
             # ignore git folder here
             if not os.path.relpath(abs, REPO_DIR).startswith("git"):
                 repo = Repo(abs)
+                if repo.sub == "packer":
+                    repo.create_tagsym(repo.sub)
                 self.repos[repo.full_name.lower()] = repo
 
     def _get_org(self, org):
@@ -129,7 +134,7 @@ class Farm:
         return org_repos
 
     def _load_yaml_file(self, path):
-        with open(os.path.join(SCRIPT_DIR, path)) as f:
+        with open(os.path.join(CONFIG_DIR, path)) as f:
             file = yaml.safe_load(f)
         return file if file is not None else []
 
@@ -150,11 +155,24 @@ class Farm:
                 except KeyError:
                     self._queue_repo_download(full_name, tag=tag)
                 else:
-                    repo.update(tag=tag)
+                    if tag.endswith("*"):
+                        repo.restrict_star = True
+                        repo.create_tagsym(tag[:-1])
+                    else:
+                        repo.create_tagsym(tag)
+
+                    if repo.unsorted:
+                        print("- tags_unsorted: " + full_name)
+                        repo.unsorted = False
+                    else: 
+                        sym = TagSym(repo, "unsorted")
+                        if os.path.exists(sym.target):
+                            print("+ tags_unsorted: " + full_name)
+                            print("- Removing symlink: " + sym.target)
+                            os.remove(sym.target)
                     
 
 
-        return repos
 
     def _get_download_stars(self):
         for full_name in self.stars:
@@ -180,10 +198,14 @@ class Farm:
             repo = Repo(full_name)
             self.repos[full_name] = repo
             if tag:
-                repo.update(tag=tag)
+                repo.create_tagsym(tag)
                 
             if star:
                 repo.starred = True
+
+            if not repo.tagsyms:
+                repo.unsorted = True
+                print("+ tags_unsorted: " + repo.full_name)
             repo.symlink()
             self.downloading.remove(full_name.lower())
         f.add_done_callback(on_complete)
@@ -191,8 +213,8 @@ class Farm:
     def _get_unsorted(self):
         for full_name in self._load_yaml_file("tags_unsorted.yaml"):
             if full_name is not None:
-                self.original_unsorted.append(full_name.lower())
-                self.repos[full_name.lower()].update(tag="unsorted")
+                self.repos[full_name.lower()].unsorted = True
+                
 
 
 
@@ -206,12 +228,26 @@ class Farm:
                 print("- Removing symlink: " + abs)
 
     def _clean_tag_syms(self):
-        for rel in util.run_sh(["cd " + REPO_TAG_DIR + " && fd --type=l"]): 
-            full_name = os.path.basename(rel).replace("|", "/")
-            if full_name not in self.repos:
-                 abs = os.path.join(REPO_TAG_DIR, rel)
-                 os.remove(abs)
-                 print("- Removing symlink: " + abs)
+        for abs in util.run_sh(["cd " + REPO_TAG_DIR + " && fd -a --type=l"]): 
+            if abs == '':
+                continue
+
+
+            full_name = os.path.basename(abs).replace("|", "/")
+            if full_name in self.repos:
+                # when removing from tags.yaml, the symlink will exist in tag/sym and it needs to be deleted
+                # therefore another check has to be made below
+                repo = self.repos[full_name]
+                sub = os.path.relpath(os.path.dirname(abs), REPO_TAG_DIR)
+                subs = [sym.sub for sym in repo.tagsyms]
+                if sub != "unsorted" and not sub in subs:
+                    print("- Removing symlink: " + abs)
+                    os.remove(abs)
+                    print("+ tags_unsorted: " + full_name)
+                    repo.unsorted = True       
+            else:
+                os.remove(abs)
+                print("- Removing symlink: " + abs)
 
 
 
@@ -220,46 +256,54 @@ class Farm:
         full_names = []
 
         for [full_name, repo] in self.repos.items():
-            tag = repo.tagsym.sub
-            if tag == "unsorted":
+            if repo.unsorted: 
+                full_names.append(repo.full_name)
+            elif not repo.unsorted and not repo.tagsyms:
                 full_names.append(repo.full_name)
 
-                if repo.full_name.lower() not in self.original_unsorted:
-                    print("+ tags_unsorted: " + repo.full_name.lower())
-
-
-        for full_name in self.original_unsorted:
-            if full_name not in self.repos:
-                print("- tags_unsorted: " + full_name)
-
-            # star them - unless they have restrict star
-        with open(os.path.join(SCRIPT_DIR, 'tags_unsorted.yaml'), 'w') as file:
+        with open(os.path.join(CONFIG_DIR, 'tags_unsorted.yaml'), 'w') as file:
             yaml.dump(full_names, file)
 
 
     def star(self, repo):
-        print(emoji.emojize(":star:") + " " + repo.full_name)
         try:
             api.activity.star_repo_for_authenticated_user(owner=repo.owner, repo=repo.name)
         except Exception as e: 
             str = f" Exception Encountered when starring: {repo.full_name} - does the repo exist?"
             print(emoji.emojize(":cross_mark:") + str)
-            # print(type(e))
             print(e)
             exit()
+        else:
+            print(emoji.emojize(":star:") + " " + repo.full_name)
+
+    def unstar(self, repo):
+        # this function is only called from manual
+        try:
+            api.activity.unstar_repo_for_authenticated_user(owner=repo["owner"], repo=repo["name"])
+        except Exception as e: 
+            print(e)
+            exit()
+        else:
+            print("unstarred --> " + repo["owner"] + "/" + repo["name"])
+
 
     def _star_or_remove_local(self):
-        # for repo in self._generate_not_in_stars():
+        repos_to_remove = []
         for [full_name, repo] in self.repos.items():
+             
             if repo.starred == False:
-                if repo.tagsym.sub != "unsorted":
-                    print("starring repo: " + repo.full_name)
-                    repo.starred = True
-                    self.star(repo)
+                if repo.unsorted:
+                    repos_to_remove.append(full_name)
                 else:
-                    print("removing repo: " + repo.full_name)
-                    shutil.rmtree(repo.abs)
-                    self.repos["full_name"] = None
+                    if not repo.restrict_star:
+                        self.star(repo)
+                        repo.starred = True
+
+        for full_name in repos_to_remove:
+            print("removing repo: " + full_name)
+            shutil.rmtree(self.repos[full_name].abs)
+            del self.repos[full_name]
+            
                 
 
     def _sync_syms(self):
@@ -270,20 +314,33 @@ class Farm:
     def sync(self):
         stars_await = self._download_stars_json()
         print("Retrieving stars from github...")
-        self._get_all_repos()
+        self._get_all_repos() 
+
+        self._get_unsorted() 
         self._get_download_tags()
-        self._get_unsorted()
 
         stars_await()
         self._get_download_stars()
-        # syms are synced and missing stars are symlinked after download
-        self._clean_flat_syms()
-        self._clean_tag_syms()
-        self._sync_syms()
-        # self._print_
-
-        # shutdown the pool, cancels scheduled tasks, returns when running tasks complete
-        self.pool.shutdown(wait=True, cancel_futures=True)
+        # star_or_remove_local before syms - as repos unstarred have to be removed from internal repos object, so the symlink functions pick up on the update changes
+        # print("star or remove local...")
+      
         self._star_or_remove_local()
+        # print("cleaning flat syms...")
+        self._clean_flat_syms()
+        # print("cleaning tag syms...")
+
+        self._clean_tag_syms()
+        # print("syncing syms...")
+        self._sync_syms()
+
+        # shutdown the pool, returns when running tasks have completed (all repos have finished downloading)
+        self.pool.shutdown(wait=True, cancel_futures=True)
+
+        # this doesnt have to wait for all repos to download
+        # but as the current implementation writes over the whole tags_unsorted.yaml file once, and there is no incremental write implementation
+        # the repos internal dict has to be complete with the current state before writing
         self._write_tags_unsorted()
+        util.remove_empty_folders(STARFARM_DIR)
+        util.remove_empty_folders(REPO_TAG_DIR)
+
 

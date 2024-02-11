@@ -1,0 +1,37 @@
+#!/usr/bin/bash
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+output_org () {
+# only nvim-telescope* from tags.yaml
+while IFS= read -r line; do
+  ORGS+=( "$line" )
+done < <( $SCRIPT_DIR/get_tags_inner 'org' )
+
+for ORG in ${ORGS[@]}; do
+  while IFS= read -r line; do
+    ORG_REPOS+=( "$line" )
+  done < <( gh repo list $ORG --limit 99999 --json nameWithOwner --jq '.[]|[.nameWithOwner]|@tsv')
+done
+
+for ORG_REPO in ${ORG_REPOS[@]}; do
+  echo "$ORG_REPO"
+done
+}
+
+output_tag () {
+  for TAG in $( $SCRIPT_DIR/get_tags_inner 'tag' ); do
+    echo "$TAG"
+  done
+}
+
+
+if [[ $1 == "org" ]]; then
+  output_org 
+elif [[ $1 == "tag" ]]; then
+  output_tag
+else
+  output_org
+  output_tag
+fi
+
+

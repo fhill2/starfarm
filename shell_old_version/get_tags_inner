@@ -1,0 +1,50 @@
+#!/usr/bin/python
+import sys
+org_only = False
+tag_only = False
+if len(sys.argv)>1 and sys.argv[1] == "org":
+  org_only = True
+
+if len(sys.argv)>1 and sys.argv[1] == "tag":
+  tag_only = True
+  
+  
+#https://stackoverflow.com/questions/1773805/how-can-i-parse-a-yaml-file-in-python?answertab=active#tab-top
+import yaml
+with open('tags.yaml') as f:
+    tags_file = yaml.safe_load(f)
+
+with open('tags_unsorted.yaml') as f:
+    tags_unsorted_file = yaml.safe_load(f)
+
+
+if tags_file == None:
+    tags_file = []
+if tags_unsorted_file == None:
+    tags_unsorted_file = []
+
+tags = []
+def output(repo):
+  if repo == None: 
+    return
+  
+  if org_only:
+    if "*" in repo:
+      tags.append(repo.replace("*", ""))
+  elif tag_only: 
+    if "*" not in repo:
+      tags.append(repo.lower())
+  else:
+      tags.append(repo.lower())
+
+for tag in tags_file:
+  for repo in tags_file[tag]:
+    output(repo)
+
+for repo in tags_unsorted_file:
+  output(repo)
+            
+for repo in tags:
+  print(repo)
+
+

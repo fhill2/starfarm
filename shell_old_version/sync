@@ -1,0 +1,99 @@
+#!/usr/bin/bash
+
+export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+array_contains () { 
+  local -n array=$1
+  local seeking=$2
+  local match=0
+  for element in "${array[@]}"; do
+    if [[ $element = "$seeking" ]]; then
+      match=1
+      break
+    fi
+  done
+  return $match
+}
+
+
+
+echo "Retrieving User Stars from Github.."
+gh api user/starred --paginate --template '{{range .}}{{.full_name}}{{"\n"}}{{end}}' | tr A-Z a-z > "$SCRIPT_DIR/user_stars"
+echo "fhill2 stars written to $SCRIPT_DIR/user_stars"
+
+
+echo "Retrieving data.."
+USER_STARS=()
+while IFS= read -r line; do
+  USER_STARS+=( "$line" )
+done < <( cat "$SCRIPT_DIR/user_stars" )
+
+
+TAGGED_STARS=()
+while IFS= read -r line; do
+  TAGGED_STARS+=( "$line" )
+done < <( $SCRIPT_DIR/get_tags) 
+
+# DONE
+echo "Finding starred repos not in tags"
+NOT_IN_TAGS=()
+  for USER_STAR in ${USER_STARS[@]}; do
+    array_contains TAGGED_STARS $USER_STAR && \
+          NOT_IN_TAGS+=( "$USER_STAR" )
+          #yq -i ".[0] + {\"$USER_STAR\": \"\"}" $SCRIPT_DIR/tags.yaml
+  done
+
+  echo "Backing up tags.yaml config.."
+  dt=`date '+%d-%m-%Y_%H-%M-%S'`
+  mkdir -p backup/tags
+  cp $SCRIPT_DIR/tags.yaml $SCRIPT_DIR/backup/tags/"$dt"_tags.yaml
+
+
+  if [[ ${NOT_IN_TAGS[@]} ]]; then
+    echo "Writing starred repos not in tags to tags_unsorted.yaml.."
+    $SCRIPT_DIR/write_tags "${NOT_IN_TAGS[@]}"
+  fi
+
+  echo "Finding tags that arent starred.."
+  NOT_IN_STARS=()
+  for TAGGED_STAR in ${TAGGED_STARS[@]}; do
+    array_contains USER_STARS $TAGGED_STAR && \
+          NOT_IN_STARS+=( "$TAGGED_STAR" )
+  done
+
+if [[ ${NOT_IN_STARS[@]} ]]; then
+for NOT_IN_STAR in ${NOT_IN_STARS[@]}; do
+  echo "$NOT_IN_STAR --> Starring" 
+  gh api -X PUT -H 'Accept: application/vnd.github.v3.raw+json' user/starred/$NOT_IN_STAR
+done
+fi
+
+echo "Downloading missing starred repos to repo dir.."
+#$($SCRIPT_DIR/download_all_stars)
+REPOS=~/tmp/repos
+mkdir -p $REPOS
+for TAGGED_STAR in "${TAGGED_STARS[@]}"; do
+  REPO_DEST=${TAGGED_STAR//\//_}
+  if [ ! -d "$REPOS/$REPO_DEST" ]; then 
+    echo "git clone $TAGGED_STAR .."
+    git clone \
+      --depth 1 https://github.com/$TAGGED_STAR "$REPOS/$REPO_DEST"
+          #>> /dev/null 2>&1
+  fi
+done
+
+
+echo "Writing dotbot.yaml.."
+mkdir -p ~/tmp/repo_tags
+$SCRIPT_DIR/write_dotbot
+
+echo "Executing dotbot.yaml.."
+dotbot -v -d $SCRIPT_DIR -c $SCRIPT_DIR/dotbot.yaml
+
+
+# old:  
+#if [[ $1 == "starred_repos_not_in_tags" ]]; then
+#elif [[ $1 == "tags_not_starred" ]]; then
+#else
+#  echo "1st argument either remote or tags"
+#fi

@@ -1,0 +1,21 @@
+#!/usr/bin/python
+import sys
+if len(sys.argv)>1:
+  tags = sys.argv[1:]
+
+
+import yaml
+with open('tags_unsorted.yaml') as f:
+      tags_file = yaml.safe_load(f)
+    
+if tags_file == None:
+  tags_file = []
+
+
+for tag in tags:
+    print(tag + " --> Adding to tags.yaml")
+    tags_file.append(tag)
+
+with open('tags_unsorted.yaml', 'w') as yaml_file:
+  yaml.dump(tags_file, yaml_file)
+    

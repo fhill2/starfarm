@@ -1,0 +1,58 @@
+#!/usr/bin/python
+# import sys
+# if len(sys.argv)>1:
+# repos = sys.argv[1:]
+
+import os
+def exec(cmd):
+  stream = os.popen(cmd)
+  output = stream.read()
+  return output
+
+import yaml
+with open('tags.yaml') as f:
+  tags_file = yaml.safe_load(f)
+
+with open('tags_unsorted.yaml') as f:
+    tags_unsorted_file = yaml.safe_load(f)
+
+if tags_file == None:
+    tags_file = []
+if tags_unsorted_file == None:
+  tags_unsorted_file = []
+
+
+
+yaml_out = []
+yaml_out.append({'defaults': {'link': {'create': True, 'relink': True}}})
+
+syms = {}
+
+def write(tag, repo):
+  repo = repo.replace("/", "_").lower()
+  dest = "~/tmp/repo_tags/" + tag + '/' + repo
+  source = '~/tmp/repos' + '/' + repo
+  syms[dest] = source
+
+
+for tag in tags_file:
+  for repo in tags_file[tag]:
+    if repo == None:
+      continue
+        
+    if "*" in repo:
+      org_list = exec("""gh repo list """ + repo.replace("*", "") +  """ --limit 99999 --json nameWithOwner --jq '.[]|[.nameWithOwner]|@tsv'""").split('\n')
+      for repo in org_list:
+        if repo == "":
+          continue
+        write(tag, repo)
+
+    else:
+      write(tag, repo)
+
+
+yaml_out.append({ 'link' : syms })
+
+with open('dotbot.yaml', 'w') as dotbot_yaml:
+  yaml.dump(yaml_out, dotbot_yaml)
+
